@@ -1,10 +1,7 @@
 ---
-title: API Reference
+title: Tradeshift Makerdao Reference
 
 language_tabs: # must be one of https://git.io/vQNgJ
-  - shell
-  - ruby
-  - python
   - javascript
 
 toc_footers:
@@ -12,228 +9,124 @@ toc_footers:
   - <a href='https://github.com/lord/slate'>Documentation Powered by Slate</a>
 
 includes:
-  - errors
+  # - errors
 
 search: true
 ---
 
-# Introduction
+# Getting Started
 
-Welcome to the Kittn API! You can use our API to access Kittn API endpoints, which can get information on various cats, kittens, and breeds in our database.
+## Get the code and install dependencies
+`git clone https://github.com/Tradeshift/ts-cash-js `
 
-We have language bindings in Shell, Ruby, Python, and JavaScript! You can view code examples in the dark area to the right, and you can switch the programming language of the examples with the tabs in the top right.
+`git checkout develop-clean   `
 
-This example API documentation page was created with [Slate](https://github.com/lord/slate). Feel free to edit it and use it as a base for your own API's documentation.
+`curl https://dapp.tools/install | sh  `
 
-# Authentication
+`git submodule update --init --recursive `
 
-> To authorize, use this code:
+`npm install`
 
-```ruby
-require 'kittn'
+Now install the private npm package for Tradeshift
+In the consumer project folder:  
+`npm login your_username  `
 
-api = Kittn::APIClient.authorize!('meowmeowmeow')
+`npm install '@makerdao/ts-cash-js' `
+
+Now you can run the tests. In the library folder:  
+
+`npm run test `
+
+This will start a testnet running locally using ganache-cli
+
+# Code Example
+
+Here a Maker object is instantiated, and a FactorService object using the invoiceFactoring service is created. This object acts as a bridge for function calls to the Ethereum network.
+
+```javascript 
+// in the index.js file
+import Maker, { InvoiceFactoringService, InvoiceMarketService } from '@makerdao/ts-cash-js';
+
+const maker = await Maker.create('test', {
+    additionalServices: [
+      'invoiceFactoring',
+      'invoiceMarket'
+    ],
+    invoiceFactoring: [InvoiceFactoringService],
+    invoiceMarket: [InvoiceMarketService],
+    … other settings … 
+  });
+
+Const factorService = maker.service('invoiceFactoring');
+Get address and call
+// then run node ./index.js 
 ```
 
-```python
-import kittn
+# How Maker is Initialized
 
-api = kittn.authorize('meowmeowmeow')
-```
-
-```shell
-# With shell, you can just pass the correct header with each request
-curl "api_endpoint_here"
-  -H "Authorization: meowmeowmeow"
-```
+The Maker object is the first object instantiated, and is the pathway to instantiate all other services. 
 
 ```javascript
-const kittn = require('kittn');
+Import Maker, { InvoiceFactoringService, InvoiceMarketService, contracts, networks } from ‘@makerdao/ts-cash-js’;
+  const mapping = networks.find(m => m.name === 'test');
+  const maker = Maker.create('test', {
+    additionalServices: [
+      'invoiceFactoring',
+      'invoiceMarket'
+    ],
+    invoiceFactoring: [InvoiceFactoringService],
+    invoiceMarket: [InvoiceMarketService],
+    smartContract: {
+      addContracts: {
+        [contracts.SAI]: {
+          address: mapping.addresses.SAI[0].address,
+          abi: mapping.addresses.SAI[0].abi
+        },
+        [contracts.TS_AUTH]: {
+          address: mapping.addresses.TS_AUTH[0].address,
+          abi: mapping.addresses.TS_AUTH[0].abi
+        },
+        [contracts.TS_ADMIN]: {
+          address: mapping.addresses.TS_ADMIN[0].address,
+          abi: mapping.addresses.TS_ADMIN[0].abi
+        },
+        [contracts.TS_INVESTOR]: {
+          address: mapping.addresses.TS_INVESTOR[0].address,
+          abi: mapping.addresses.TS_INVESTOR[0].abi
+        }
+      }
+    }
+  }); 
+  ```
 
-let api = kittn.authorize('meowmeowmeow');
-```
 
-> Make sure to replace `meowmeowmeow` with your API key.
+# Use Case Scenarios
 
-Kittn uses API keys to allow access to the API. You can register a new Kittn API key at our [developer portal](http://example.com/developers).
+ > The same private key should be used for all use case scenarios.
 
-Kittn expects for the API key to be included in all API requests to the server in a header that looks like the following:
-
-`Authorization: meowmeowmeow`
-
-<aside class="notice">
-You must replace <code>meowmeowmeow</code> with your personal API key.
-</aside>
-
-# Kittens
-
-## Get All Kittens
-
-```ruby
-require 'kittn'
-
-api = Kittn::APIClient.authorize!('meowmeowmeow')
-api.kittens.get
-```
-
-```python
-import kittn
-
-api = kittn.authorize('meowmeowmeow')
-api.kittens.get()
-```
-
-```shell
-curl "http://example.com/api/kittens"
-  -H "Authorization: meowmeowmeow"
-```
-
+## Initial Contract Setup
+User: Tradeshift
+Assumptions: Maker object constructed (documentation), imported from ts-cash-js
+Conventions
+Auth = TradeshiftAuthority 
+User = TradeshiftUsers
+Admin = TradeshiftAdmin
+Investor = TradeshiftInvestor
+ 
 ```javascript
-const kittn = require('kittn');
-
-let api = kittn.authorize('meowmeowmeow');
-let kittens = api.kittens.get();
+//Deploy contract 
+Auth( )
+// Deploy contract
+Admin(Auth address)
+//Deploy contract 
+Investor( )
+//Call contract function - 
+Auth.setOwner(Admin address)
+//Call contract function - 
+Admin.setTradeshiftApproved(Investor, true)
+//OR
+//Approve investor contract
+await maker.service(‘invoiceFactoring’).approveInvestorContract( ... )
 ```
 
-> The above command returns JSON structured like this:
-
-```json
-[
-  {
-    "id": 1,
-    "name": "Fluffums",
-    "breed": "calico",
-    "fluffiness": 6,
-    "cuteness": 7
-  },
-  {
-    "id": 2,
-    "name": "Max",
-    "breed": "unknown",
-    "fluffiness": 5,
-    "cuteness": 10
-  }
-]
-```
-
-This endpoint retrieves all kittens.
-
-### HTTP Request
-
-`GET http://example.com/api/kittens`
-
-### Query Parameters
-
-Parameter | Default | Description
---------- | ------- | -----------
-include_cats | false | If set to true, the result will also include cats.
-available | true | If set to false, the result will include kittens that have already been adopted.
-
-<aside class="success">
-Remember — a happy kitten is an authenticated kitten!
-</aside>
-
-## Get a Specific Kitten
-
-```ruby
-require 'kittn'
-
-api = Kittn::APIClient.authorize!('meowmeowmeow')
-api.kittens.get(2)
-```
-
-```python
-import kittn
-
-api = kittn.authorize('meowmeowmeow')
-api.kittens.get(2)
-```
-
-```shell
-curl "http://example.com/api/kittens/2"
-  -H "Authorization: meowmeowmeow"
-```
-
-```javascript
-const kittn = require('kittn');
-
-let api = kittn.authorize('meowmeowmeow');
-let max = api.kittens.get(2);
-```
-
-> The above command returns JSON structured like this:
-
-```json
-{
-  "id": 2,
-  "name": "Max",
-  "breed": "unknown",
-  "fluffiness": 5,
-  "cuteness": 10
-}
-```
-
-This endpoint retrieves a specific kitten.
-
-<aside class="warning">Inside HTML code blocks like this one, you can't use Markdown, so use <code>&lt;code&gt;</code> blocks to denote code.</aside>
-
-### HTTP Request
-
-`GET http://example.com/kittens/<ID>`
-
-### URL Parameters
-
-Parameter | Description
---------- | -----------
-ID | The ID of the kitten to retrieve
-
-## Delete a Specific Kitten
-
-```ruby
-require 'kittn'
-
-api = Kittn::APIClient.authorize!('meowmeowmeow')
-api.kittens.delete(2)
-```
-
-```python
-import kittn
-
-api = kittn.authorize('meowmeowmeow')
-api.kittens.delete(2)
-```
-
-```shell
-curl "http://example.com/api/kittens/2"
-  -X DELETE
-  -H "Authorization: meowmeowmeow"
-```
-
-```javascript
-const kittn = require('kittn');
-
-let api = kittn.authorize('meowmeowmeow');
-let max = api.kittens.delete(2);
-```
-
-> The above command returns JSON structured like this:
-
-```json
-{
-  "id": 2,
-  "deleted" : ":("
-}
-```
-
-This endpoint deletes a specific kitten.
-
-### HTTP Request
-
-`DELETE http://example.com/kittens/<ID>`
-
-### URL Parameters
-
-Parameter | Description
---------- | -----------
-ID | The ID of the kitten to delete
 

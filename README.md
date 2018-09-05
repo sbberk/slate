@@ -1,115 +1,218 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/lord/img/master/logo-slate.png" alt="Slate: API Documentation Generator" width="226">
-  <br>
-  <a href="https://travis-ci.org/lord/slate"><img src="https://travis-ci.org/lord/slate.svg?branch=master" alt="Build Status"></a>
-</p>
+import Maker, {InvoiceFactoringService, InvoiceMarketService, contracts, networks } from ‘@makerdao/ts-cash-js’;
+const mapping = networks.find(m => m.name === 'test');
 
-<p align="center">Slate helps you create beautiful, intelligent, responsive API documentation.</p>
+const maker = Maker.create('test', {
+  additionalServices: [
+    'invoiceFactoring',
+    'invoiceMarket'
+  ],
+  invoiceFactoring: [InvoiceFactoringService],
+  invoiceMarket: [InvoiceMarketService],
+  smartContract: {
+    addContracts: {
+      [contracts.SAI]: {
+        address: mapping.addresses.SAI[0].address,
+        abi: mapping.addresses.SAI[0].abi
+      },
+      [contracts.TS_AUTH]: {
+        address: mapping.addresses.TS_AUTH[0].address,
+        abi: mapping.addresses.TS_AUTH[0].abi
+      },
+      [contracts.TS_ADMIN]: {
+        address: mapping.addresses.TS_ADMIN[0].address,
+        abi: mapping.addresses.TS_ADMIN[0].abi
+      },
+      [contracts.TS_INVESTOR]: {
+        address: mapping.addresses.TS_INVESTOR[0].address,
+        abi: mapping.addresses.TS_INVESTOR[0].abi
+      }
+    }
+  }
+});
 
-<p align="center"><img src="https://raw.githubusercontent.com/lord/img/master/screenshot-slate.png" width=700 alt="Screenshot of Example Documentation created with Slate"></p>
+//Starts here https://makerdao.com/documentation/#authenticate and follows maker documentation
+//authenticate
+await maker.authenticate();
 
-<p align="center"><em>The example above was created with Slate. Check it out at <a href="https://lord.github.io/slate">lord.github.io/slate</a>.</em></p>
 
-Features
-------------
+//service
+factorService = maker.service('invoiceFactoring');
+//OR
+marketService = maker.service('invoiceMarket');
 
-* **Clean, intuitive design** — With Slate, the description of your API is on the left side of your documentation, and all the code examples are on the right side. Inspired by [Stripe's](https://stripe.com/docs/api) and [PayPal's](https://developer.paypal.com/webapps/developer/docs/api/) API docs. Slate is responsive, so it looks great on tablets, phones, and even in print.
 
-* **Everything on a single page** — Gone are the days when your users had to search through a million pages to find what they wanted. Slate puts the entire documentation on a single page. We haven't sacrificed linkability, though. As you scroll, your browser's hash will update to the nearest header, so linking to a particular point in the documentation is still natural and easy.
+//factorInvoice object
+const faceValue = 19.6; // principal value of invoice in DAI (value of invoice when fully paid)
+const discountedValue = 0.75; //75% of principal value or 25% discount on price expected return of invoice
+//returns promise(resolves to a FactoredInvoice object)
+const newFactoredInvoice = await factorService.factorInvoice(faceValue,discountedValue);
 
-* **Slate is just Markdown** — When you write docs with Slate, you're just writing Markdown, which makes it simple to edit and understand. Everything is written in Markdown — even the code samples are just Markdown code blocks.
+//getFactoredInvoice, invoiceId = address: string (e.g. "0x65G.....4D46")
+const FactoredInvoice = await getFactoredInvoice(invoiceId);
 
-* **Write code samples in multiple languages** — If your API has bindings in multiple programming languages, you can easily put in tabs to switch between them. In your document, you'll distinguish different languages by specifying the language name at the top of each code block, just like with GitHub Flavored Markdown.
 
-* **Out-of-the-box syntax highlighting** for [over 100 languages](https://github.com/jneen/rouge/wiki/List-of-supported-languages-and-lexers), no configuration required.
+//Note: tab = subsections
+//FactoredInvoice Object
+//getId, returns a string (invoice token address)
+const invoiceId = await FactoredInvoice.getId();
 
-* **Automatic, smoothly scrolling table of contents** on the far left of the page. As you scroll, it displays your current position in the document. It's fast, too. We're using Slate at TripIt to build documentation for our new API, where our table of contents has over 180 entries. We've made sure that the performance remains excellent, even for larger documents.
+//getTokenSupply - total supply of invoiceToken
+const supply = await FactoredInvoice.getTokenSupply();
 
-* **Let your users update your documentation for you** — By default, your Slate-generated documentation is hosted in a public GitHub repository. Not only does this mean you get free hosting for your docs with GitHub Pages, but it also makes it simple for other developers to make pull requests to your docs if they find typos or other problems. Of course, if you don't want to use GitHub, you're also welcome to host your docs elsewhere.
+//getTokenBalance - addresses' balance of invoiceTokens
+const tokenAddress = '0x1C00F341bF965E3F04E126de0E78Acb0D0404910'; //dummy address
+const balance = await FactoredInvoice.getTokenBalance(tokenAddress);
 
-* **RTL Support** Full right-to-left layout for RTL languages such as Arabic, Persian (Farsi), Hebrew etc.
+//getIOUContractAddress(), returns string
+await iou = await FactoredInvoice.getIOUContractAddress()
 
-Getting started with Slate is super easy! Simply fork this repository and follow the instructions below. Or, if you'd like to check out what Slate is capable of, take a look at the [sample docs](http://lord.github.io/slate).
+//getSaleContractAddress, returns string
+await sale = await FactoredInvoice.getSaleContractAddress()
 
-Getting Started with Slate
-------------------------------
+// from TS_Admin perspective
+  //settle
+    //settle - autoprovision active, optional settlement amount
+    await FactoredInvoice.settle(true);
 
-### Prerequisites
+    //settle - optional settlement amount in DAI
+    await FactoredInvoice.settle(true, 20);
 
-You're going to need:
+    //settle - autoprovision inactive (must send funds to TS_Admin if has insufficient funds)
+    await FactoredInvoice.settle(false);
 
- - **Linux or macOS** — Windows may work, but is unsupported.
- - **Ruby, version 2.3.1 or newer**
- - **Bundler** — If Ruby is already installed, but the `bundle` command doesn't work, just run `gem install bundler` in a terminal.
+  //sweep
+  await FactoredInvoice.sweep();
 
-### Getting Set Up
+// from TS_Investor Perspective
+  //buy
+  await FactoredInvoice.buy();
 
-1. Fork this repository on GitHub.
-2. Clone *your forked repository* (not our original one) to your hard drive with `git clone https://github.com/YOURUSERNAME/slate.git`
-3. `cd slate`
-4. Initialize and start Slate. You can either do this locally, or with Vagrant:
+  //redeem
+  await FactoredInvoice.redeem();
 
-```shell
-# either run this to run locally
-bundle install
-bundle exec middleman server
 
-# OR run this to run with vagrant
-vagrant up
-```
 
-You can now see the docs at http://localhost:4567. Whoa! That was fast!
 
-Now that Slate is all set up on your machine, you'll probably want to learn more about [editing Slate markdown](https://github.com/lord/slate/wiki/Markdown-Syntax), or [how to publish your docs](https://github.com/lord/slate/wiki/Deploying-Slate).
 
-If you'd prefer to use Docker, instructions are available [in the wiki](https://github.com/lord/slate/wiki/Docker).
+// InvoiceFactoringService -> TS_Admin perspective
+  //approveInvestorContract
+  await factorService.approveInvestorContract(investorAddress,true);
 
-### Note on JavaScript Runtime
+  //getTSAuthOwner, returns
+  const TSAuthOwnerAddress = factorService.getTSAuthOwner();
 
-For those who don't have JavaScript runtime or are experiencing JavaScript runtime issues with ExecJS, it is recommended to add the [rubyracer gem](https://github.com/cowboyd/therubyracer) to your gemfile and run `bundle` again.
+  //isUserApproved, checks if user is TSApproved returns a boolean
+  const address = '0x1C00F341bF965E3F04E126de0E78Acb0D0404910'; //dummy address
+  const bool = factorService.isUserApproved(address);
 
-Companies Using Slate
----------------------------------
+  //checkInvoiceToken, checks if address is a tokenAddress, returns a boolean
+  const tokenAddress = '0x1C00F341bF965E3F04E126de0E78Acb0D0404910'; //dummy address
+  const bool = factorService.checkInvoiceToken(tokenAddress);
 
-* [NASA](https://api.nasa.gov)
-* [Sony](http://developers.cimediacloud.com)
-* [Best Buy](https://bestbuyapis.github.io/api-documentation/)
-* [Travis-CI](https://docs.travis-ci.com/api/)
-* [Greenhouse](https://developers.greenhouse.io/harvest.html)
-* [Woocommerce](http://woocommerce.github.io/woocommerce-rest-api-docs/)
-* [Dwolla](https://docs.dwolla.com/)
-* [Clearbit](https://clearbit.com/docs)
-* [Coinbase](https://developers.coinbase.com/api)
-* [Parrot Drones](http://developer.parrot.com/docs/bebop/)
-* [Scale](https://docs.scaleapi.com/)
+  //provision - send DAI from msg.sender to some destination
+  const amount = 10; // amount of dai to send to an address
+  const TSAdminAddress = '0x1C00F341bF965E3F04E126de0E78Acb0D0404910'; //dummy address
+  await factorService.provision(TSAdminAddress, 10);
 
-You can view more in [the list on the wiki](https://github.com/lord/slate/wiki/Slate-in-the-Wild).
+  //withdraws DAI from TSAdmin to destination
+    //withdraw all
+    const destination = '0x1C00F341bF965E3F04E126de0E78Acb0D0404910'; //dummy address
+    await factorService.withdraw(destination);
+    //withdraw x amount
+    const amount = 10;
+    const destination = '0x1C00F341bF965E3F04E126de0E78Acb0D0404910';
+    await factorService.withdraw(destination, 10);
 
-Questions? Need Help? Found a bug?
---------------------
 
-If you've got questions about setup, deploying, special feature implementation in your fork, or just want to chat with the developer, please feel free to [start a thread in our Spectrum community](https://spectrum.chat/slate)!
 
-Found a bug with upstream Slate? Go ahead and [submit an issue](https://github.com/lord/slate/issues). And, of course, feel free to submit pull requests with bug fixes or changes to the `dev` branch.
 
-Contributors
---------------------
 
-Slate was built by [Robert Lord](https://lord.io) while interning at [TripIt](https://www.tripit.com/).
+// InvoiceMarketService -> TS_Investor perspective
+  //provision - send DAI from msg.sender to some destination
+  const amount = 10; // amount of dai to send to an address
+  const TSInvestorAddress = '0x1C00F341bF965E3F04E126de0E78Acb0D0404910'; //dummy address
+  await marketService.provision(TSInvestorAddress, 10);
 
-Thanks to the following people who have submitted major pull requests:
+  //buy
+    //entire invoice
+    await FactoredInvoice.buy();
+    //50% of invoice
+    const share = 0.5
+    await FactoredInvoice.buy(share);
 
-- [@chrissrogers](https://github.com/chrissrogers)
-- [@bootstraponline](https://github.com/bootstraponline)
-- [@realityking](https://github.com/realityking)
-- [@cvkef](https://github.com/cvkef)
+  //withdraws DAI from TSAdmin to destination
+    //withdraw all
+    const destination = '0x1C00F341bF965E3F04E126de0E78Acb0D0404910'; //dummy address
+    await marketService.withdraw(destination);
 
-Also, thanks to [Sauce Labs](http://saucelabs.com) for sponsoring the development of the responsive styles.
+    //withdraw x amount
+    const amount = 10;
+    const destination = '0x1C00F341bF965E3F04E126de0E78Acb0D0404910';
+    await marketService.withdraw(destination, 10);
 
-Special Thanks
---------------------
-- [Middleman](https://github.com/middleman/middleman)
-- [jquery.tocify.js](https://github.com/gfranko/jquery.tocify.js)
-- [middleman-syntax](https://github.com/middleman/middleman-syntax)
-- [middleman-gh-pages](https://github.com/edgecase/middleman-gh-pages)
-- [Font Awesome](http://fortawesome.github.io/Font-Awesome/)
+
+  TODO:
+    CREATE INDEX.JS file in another project that uses the above to run the steps described below:
+    
+TradeShift App > TradeShift Cash Service
+  POST /api/cash/early-payments
+  InvoiceID (string)
+  PercentageForSale = 100.00
+  MaxDiscount = TBD
+
+(TS admin) TradeShift Cash Service > EarlyPaymentsFactory.build
+  TokensAmount (invoice face value with 18 decimals, needs investors’ feedback)
+  DenominatingCurrency
+  MaxDiscount
+
+(TS admin) EarlyPaymentsFactory.build > new TokenContract
+  TokensAmount (invoice face value with 18 decimals, needs investors’ feedback)
+
+(TS admin) EarlyPaymentsFactory.build > new SaleContract
+  TokenContractAddress
+  BeneficiaryAddress (= TS admin)
+  DaiAddress
+  TokenSaleAmount (in DAI) (not actually needed for the alpha version)
+  PricePerToken
+
+(TS admin) EarlyPaymentsFactory.build > new IOUContract
+  TokenContractAddress
+  DaiAddress
+  DenominatingCurrency
+  (later: DueDate, …)
+
+(TS investor) > SaleContract.buy
+
+(TS investor) SaleContract.buy > DAI.transferFrom
+  From: TS investor
+  To: TS admin
+  Amount: PricePerToken x SaleContract.TokenSaleAmount
+
+(TS investor) SaleContract.buy > TokenContract.transferFrom
+  From: TS admin
+  To: TS investor
+  Amount: SaleContract.TokenSaleAmount
+  (DAI exchange is handled manually)
+  (Payment exceptions are handled manually)
+
+(TS admin) > IOUContract.settle()
+
+(TS admin) IOUContract.settle > DaiContract.transferFrom
+  From: TS admin
+  To: IOUContract
+  Amount: TokenContract.totalSupply()
+
+(TS investor) > IOUContract.redeem()
+
+(TS investor) IOUContract.redeem > TokenContract.transferFrom
+  From: TS investor
+  To: IOUContract
+  Amount: TokenContract.totalSupply()
+
+(TS investor) IOUContract.redeem > DaiContract.transferFrom
+  From: IOUContract
+  To: TS investor
+  Amount: DaiContract.balanceOf(this)
+
+(TS investor) IOUContract.redeem > TokenContract.burn()
+  Amount: TokenContract.totalSupply()
